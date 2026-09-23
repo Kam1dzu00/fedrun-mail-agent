@@ -1,0 +1,26 @@
+{
+  "name": "fedrun-mail-agent",
+  "version": "0.1.0",
+  "description": "Compact TypeScript AI mail agent with Gmail ingestion, local classification, Telegram alerts, and safe auto-replies.",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "npm run build && node --test dist/test/*.test.js",
+    "build": "tsc -p tsconfig.json",
+    "demo": "npm run build && node dist/src/demo/offline-demo.js",
+    "start": "npm run build && node dist/src/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "typescript": "^7.0.2"
+  }
+}
