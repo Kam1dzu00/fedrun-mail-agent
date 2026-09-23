@@ -25,7 +25,7 @@ export async function classifyEmail(message: EmailMessage, config: LocalLlmConfi
     if (!response.ok) return fallback;
     const payload = (await response.json()) as { response?: string };
     const parsed = parseJsonDecision(payload.response ?? "", fallback);
-    return { ...fallback, ...parsed, messageId: message.id };
+    return mergeWithoutWeakening(fallback, parsed, message.id);
   } catch {
     return fallback;
   }
@@ -62,4 +62,34 @@ function parseJsonDecision(raw: string, fallback: MailDecision): Partial<MailDec
   } catch {
     return {};
   }
+}
+
+function mergeWithoutWeakening(fallback: MailDecision, parsed: Partial<MailDecision>, messageId: string): MailDecision {
+  const merged: MailDecision = {
+    ...fallback,
+    category: parsed.category ?? fallback.category,
+    suggestedReply: parsed.suggestedReply ?? fallback.suggestedReply,
+    reason: parsed.reason ?? fallback.reason,
+    messageId
+  };
+
+  merged.spam = fallback.spam || parsed.spam === true;
+  merged.promptInjectionSignals = fallback.promptInjectionSignals;
+  merged.urgency = maxUrgency(fallback.urgency, parsed.urgency);
+  merged.risk = maxRisk(fallback.risk, parsed.risk);
+  merged.needsHumanApproval = fallback.needsHumanApproval || parsed.needsHumanApproval === true || merged.risk !== "safe";
+  merged.shouldAutoReply = fallback.shouldAutoReply && parsed.shouldAutoReply !== false && merged.risk === "safe" && !merged.needsHumanApproval;
+  return merged;
+}
+
+function maxUrgency(a: MailDecision["urgency"], b: MailDecision["urgency"] | undefined): MailDecision["urgency"] {
+  const rank = { low: 0, normal: 1, high: 2 } as const;
+  if (!b) return a;
+  return rank[b] > rank[a] ? b : a;
+}
+
+function maxRisk(a: MailDecision["risk"], b: MailDecision["risk"] | undefined): MailDecision["risk"] {
+  const rank = { safe: 0, review: 1, blocked: 2 } as const;
+  if (!b) return a;
+  return rank[b] > rank[a] ? b : a;
 }

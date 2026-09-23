@@ -4,9 +4,10 @@ import { detectPromptInjection } from "../security/promptInjection.js";
 const spamTerms = ["crypto giveaway", "wire transfer", "lottery", "urgent prize", "seo backlinks", "casino"];
 const urgentTerms = ["urgent", "asap", "today", "deadline", "immediately", "broken", "can't login", "chargeback"];
 const billingTerms = ["invoice", "refund", "payment", "billing", "charge", "receipt"];
-const supportTerms = ["bug", "error", "issue", "can't", "cannot", "failed", "login"];
-const salesTerms = ["pricing", "quote", "demo", "plan", "subscription"];
+const supportTerms = ["bug", "error", "issue", "can't", "cannot", "failed", "login", "shipping", "delivery"];
+const salesTerms = ["pricing", "price", "quote", "demo", "plan", "subscription", "service"];
 const schedulingTerms = ["meeting", "schedule", "calendar", "call", "appointment"];
+const dangerousTerms = ["password", "passport", "delete account", "wire transfer", "bank account"];
 
 function containsAny(value: string, terms: string[]): boolean {
   return terms.some((term) => value.includes(term));
@@ -29,8 +30,9 @@ export function classifyWithHeuristics(message: EmailMessage): MailDecision {
             ? "personal"
             : "unknown";
 
-  const risky = spam || injection.length > 0 || urgency === "high" || category === "billing";
-  const blocked = spam || injection.length > 0;
+  const dangerous = containsAny(combined, dangerousTerms);
+  const risky = spam || injection.length > 0 || urgency === "high" || category === "billing" || dangerous || category === "support";
+  const blocked = spam || injection.length > 0 || dangerous;
 
   return {
     messageId: message.id,
@@ -41,7 +43,7 @@ export function classifyWithHeuristics(message: EmailMessage): MailDecision {
     needsHumanApproval: risky,
     shouldAutoReply: !risky && ["support", "sales", "scheduling"].includes(category),
     reason: blocked
-      ? "Blocked by spam or prompt-injection signals."
+      ? "Blocked by spam, dangerous content, or prompt-injection signals."
       : risky
         ? "Requires human review because the message is urgent, financial, or sensitive."
         : "Safe low-risk operational reply.",
